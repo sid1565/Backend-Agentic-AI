@@ -1,6 +1,32 @@
-# School SaaS — Manual Subscription System
+# Backend Agentic AI
 
-NestJS + TypeORM + Postgres backend for admin-driven school onboarding with subscription management and credential email delivery.
+This repository is the **Backend Agentic AI** OKR deliverable: a published agentic system (under
+`.claude/`) that designs, implements, tests, reviews, and documents NestJS backends end-to-end —
+together with the **School SaaS** backend it produced as the working reference application.
+
+> **Submission index:** [`SUBMISSION.md`](SUBMISSION.md) maps every OKR Key Result (Foundation,
+> Daily Productivity, Testing & Documentation Quality, Adoption & Enablement) to its deliverables and status.
+
+## The agentic system (`.claude/`)
+
+| Piece | Where |
+|---|---|
+| **14 backend skills** (API design, DB/migrations, error handling, logging, auth, caching, background jobs, code review, …) | [`.claude/Skills.md`](.claude/Skills.md) |
+| **10 specialized agents** (Spec Writer, API Builder, Test Engineer, Code Reviewer, Doc Generator, …) | [`.claude/Agents.md`](.claude/Agents.md) |
+| **15 slash commands** (`/spec`, `/scaffold`, `/test`, `/review`, `/document`, …) | [`.claude/Commands.md`](.claude/Commands.md) |
+| **Orchestrator** — the 9-stage, security-first pipeline (Spec → Scaffold → Schema → Auth → API → Services → Tests → Review → Docs) | `Okr-backend-lead-architect` |
+| **Evals** — internal test cases proving the pipeline (target ≥90%; current 6/6 = 100%) | [`.claude/evals/`](.claude/evals) |
+| **Playbook & onboarding** — conventions, definition-of-done, hands-on quickstart | [`.claude/PLAYBOOK.md`](.claude/PLAYBOOK.md) · [`ONBOARDING.md`](ONBOARDING.md) |
+
+**Build a feature end-to-end:** `/Okr-backend-build <description>` — or run any single stage with its
+matching `/Okr-*` command. New here? Start with [`ONBOARDING.md`](ONBOARDING.md).
+
+---
+
+## Reference backend: School SaaS — Manual Subscription System
+
+The application the agentic pipeline built and maintains: a NestJS + TypeORM + Postgres backend for
+admin-driven school onboarding with subscription management and credential email delivery.
 
 ## Stack
 - NestJS 10, TypeORM 0.3, PostgreSQL
@@ -120,9 +146,12 @@ Generates a fresh secure password, hashes & stores it, emails the school. Return
 - **Audit**: every `SCHOOL_CREATED`, `CREDENTIALS_RESENT`, and `SUBSCRIPTION_EXPIRED` event written to `admin_audit_logs`.
 - **Expiry cron**: runs hourly (`@Cron(CronExpression.EVERY_HOUR)`); flips `ACTIVE → EXPIRED` for subscriptions whose `endDate < today`.
 
-## Schema (TypeORM auto-sync in dev)
+## Schema (TypeORM migrations)
 
-Auth subsystem adds `admin_users`, `refresh_tokens`, and `password_reset_tokens`
+Dev/test auto-create the schema via `synchronize`; **production runs versioned
+migrations** on boot (`src/database/migrations/`, applied with `npm run migration:run`) — see
+[Getting Started → Database migrations](docs/getting-started.md#database-migrations). The auth
+subsystem adds `admin_users`, `refresh_tokens`, and `password_reset_tokens`
 (see [ADR 0001](docs/adr/0001-token-strategy.md)). Core tables below.
 
 `schools`
@@ -159,8 +188,8 @@ Auth subsystem adds `admin_users`, `refresh_tokens`, and `password_reset_tokens`
 
 ## Tests
 ```bash
-npm test          # unit suite (40 tests, no DB needed) — with coverage gates
-npm run test:e2e  # e2e suite (14 tests) — needs Postgres + a backend_agent_test DB
+npm test          # unit suite (57 tests, no DB needed) — with coverage gates
+npm run test:e2e  # e2e suite (18 tests) — needs Postgres + a backend_agent_test DB
 ```
 - **Unit** (`test/*.spec.ts`): `auth.service`, `me.service`, `admin-seeder`,
   `audit.service`, `schools` password util + DTO validation. Coverage gates on
@@ -176,9 +205,10 @@ Done: roles-only RBAC; refresh-token rotation + revocation; rate limiting
 (`@nestjs/throttler`); CORS allowlist; boot-time secret guard (`main.ts` refuses
 default `JWT_SECRET`/`ROOT_ADMIN_PASSWORD` in production).
 
+Done: explicit TypeORM migrations for production (`src/database/`, `migration:*` scripts) — dev/test
+keep `synchronize`.
+
 Outstanding (see [`REVIEW.md`](REVIEW.md) for IDs):
-- Replace TypeORM `synchronize` with explicit migrations; drop the legacy
-  `admin_users.permissions` column in migration #1 (F7).
 - Add Helmet security headers (`npm i helmet`) (F5).
 - Audit auth events (login/logout/password-reset) (F6).
 - Per-account login lockout in addition to IP throttling (F4).

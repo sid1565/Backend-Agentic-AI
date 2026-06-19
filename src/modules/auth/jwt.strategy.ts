@@ -12,10 +12,19 @@ export interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(config: ConfigService) {
+    // configuration.ts validates this at load, but assert here too so the
+    // strategy can never fall back to a guessable secret (defense in depth).
+    const secret = config.get<string>('auth.jwtSecret');
+    if (!secret) {
+      throw new Error('auth.jwtSecret is not configured');
+    }
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('auth.jwtSecret') ?? 'change-me',
+      secretOrKey: secret,
+      // Pin the accepted algorithm so a forged token can't request a different
+      // verification scheme (alg-confusion defence).
+      algorithms: ['HS256'],
     });
   }
 

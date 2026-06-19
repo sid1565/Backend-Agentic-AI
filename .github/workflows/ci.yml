@@ -1,0 +1,143 @@
+name: CI
+
+# Foundation gate — "verified in CI":
+#   • lint    — eslint (incl. eslint-plugin-security) must pass with zero errors
+#   • build   — nest build must succeed
+#   • test    — unit suite with coverage; jest.config.js coverageThreshold enforces
+#               the ≥80% line bar on covered modules (build fails if any drops below)
+#   • e2e     — full app boots against a real Postgres and the e2e suite passes
+#   • docs    — README present + OpenAPI spec validates (100% API doc coverage gate)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (eslint-plugin-security)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: ESLint (zero errors required)
+        run: npm run lint:check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: nest build
+        run: npm run build
+
+  test:
+    name: Unit tests + coverage (>= 80%)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # jest.config.js coverageThreshold gates per-module line/branch coverage;
+      # the run fails if any thresholded module falls below its bar.
+      - name: Jest unit suite with coverage
+        run: npm test -- --coverage --ci
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    # Credentials below belong to an EPHEMERAL Postgres container that GitHub
+    # creates for this job and destroys when it ends — it is reachable only on
+    # this job's private localhost and holds no real data. These are NOT
+    # production secrets. The password is sourced from the optional repo secret
+    # CI_DB_PASSWORD when set (Settings → Secrets and variables → Actions),
+    # falling back to a throwaway literal so the workflow runs without setup.
+    # Production DB_PASSWORD comes from the host environment, never from here.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD || 'postgres' }}
+          POSTGRES_DB: backend_agent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_USERNAME: postgres
+      DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD || 'postgres' }}
+      DB_NAME: backend_agent_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # test/e2e-env.ts injects JWT/seed env and reads the DB_* vars above.
+      - name: Jest e2e suite
+        run: npm run test:e2e -- --ci
+
+  docs-gate:
+    name: Docs coverage (OpenAPI + README)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: README present
+        run: |
+          if [ ! -f README.md ]; then
+            echo "::error::README.md is required (Foundation: 100% README coverage)."
+            exit 1
+          fi
+          echo "README.md present."
+      # docs/openapi.yaml is generated from the live NestJS routes
+      # (scripts/generate-openapi.ts, preview mode — no DB). Regenerate here and
+      # fail if the committed spec is stale, so endpoint docs can never drift
+      # from the code.
+      - name: Regenerate OpenAPI from routes
+        run: npm run openapi:gen
+      - name: Fail if committed OpenAPI is out of date
+        run: |
+          if ! git diff --exit-code -- docs/openapi.yaml; then
+            echo "::error::docs/openapi.yaml is stale. Run 'npm run openapi:gen' and commit the result."
+            exit 1
+          fi
+          echo "OpenAPI spec is in sync with the routes."
+      - name: Validate OpenAPI spec
+        run: npx --yes @redocly/cli@1 lint docs/openapi.yaml

@@ -187,6 +187,30 @@ describe('AuthService', () => {
       ).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
+    it('AC-AUTH-8b: reuse of a revoked token revokes ALL sessions for the subject', async () => {
+      // Replay of an already-rotated token is a theft signal → kill the family.
+      refreshTokens.findOne.mockResolvedValue({
+        revokedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60_000),
+        subjectType: SubjectType.ADMIN,
+        subjectId: 'admin-1',
+      });
+
+      await expect(
+        service.refresh({ refreshToken: 'stolen' }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+
+      expect(refreshTokens.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subjectId: 'admin-1',
+          subjectType: SubjectType.ADMIN,
+        }),
+        expect.objectContaining({ revokedAt: expect.any(Date) }),
+      );
+      // a new pair is NOT minted on reuse
+      expect(refreshTokens.insert).not.toHaveBeenCalled();
+    });
+
     it('AC-AUTH-9: rejects an expired token with 401', async () => {
       refreshTokens.findOne.mockResolvedValue({
         revokedAt: null,
@@ -255,6 +279,21 @@ describe('AuthService', () => {
         'admin@x.io',
         expect.objectContaining({ resetUrl: expect.stringContaining('token=') }),
       );
+    });
+
+    it('AC-AUTH-13b: lookup is constant-work — both tables queried even on an admin hit', async () => {
+      // No short-circuit: a hit and a miss must do the same work (no timing oracle).
+      admins.findOne.mockResolvedValue({ id: 'admin-1' });
+      schools.findOne.mockResolvedValue(null);
+
+      await service.forgotPassword({ email: 'admin@x.io' });
+
+      expect(admins.findOne).toHaveBeenCalledWith({
+        where: { email: 'admin@x.io' },
+      });
+      expect(schools.findOne).toHaveBeenCalledWith({
+        where: { email: 'admin@x.io' },
+      });
     });
   });
 

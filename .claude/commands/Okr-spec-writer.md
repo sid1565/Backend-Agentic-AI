@@ -1,3 +1,8 @@
+---
+description: Produce a structured spec (entities, use cases, NFRs, acceptance criteria) using the Okr-spec-writer agent.
+argument-hint: <feature description>
+---
+
 # Spec Writer Commands
 
 Commands routed to the **Okr-spec-writer** agent (stage 1). The base `/spec` command runs the full agent end-to-end. Sub-commands target a single skill for focused work — useful when you have a partial spec, want to fill a gap, or need to validate without regenerating.

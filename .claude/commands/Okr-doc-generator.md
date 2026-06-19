@@ -1,3 +1,8 @@
+---
+description: Generate docs (README, OpenAPI, ADRs, runbook) from finished artifacts using the Okr-doc-generator agent; refuses to run on a NO-GO verdict or open P0/P1.
+argument-hint: <feature/module or artifact, e.g. "regenerate OpenAPI for announcements" or "write a runbook for subscriptions">
+---
+
 # Doc Generator Commands
 
 Commands routed to the **Okr-doc-generator** agent (stage 8). The base `/document` command produces the full doc set. Sub-commands generate a single artifact — useful when only one doc has gone stale (API contract changed → regenerate OpenAPI; new known-risk → update runbook) without rebuilding everything.

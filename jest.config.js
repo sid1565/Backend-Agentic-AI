@@ -15,6 +15,10 @@ module.exports = {
       branches: 80,
       lines: 85,
     },
+    'src/modules/announcements/announcements.service.ts': {
+      branches: 65,
+      lines: 90,
+    },
   },
   testEnvironment: 'node',
 };

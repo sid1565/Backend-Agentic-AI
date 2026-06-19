@@ -22,7 +22,8 @@ type EntityKey =
   | 'AUDIT_LOG'
   | 'USER'
   | 'ME_SCHOOL'
-  | 'ME_SUBSCRIPTION';
+  | 'ME_SUBSCRIPTION'
+  | 'ANNOUNCEMENT';
 
 const t = (i18n: I18nService, key: string, args?: Record<string, unknown>) =>
   i18n.t(key, args ? { args } : undefined) as string;

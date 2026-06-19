@@ -1,3 +1,8 @@
+---
+name: Okr-doc-generator
+description: Use this skill to generate developer-facing documentation from finished backend artifacts — README, OpenAPI/Swagger spec, ADRs (architecture decision records), and an operational runbook. Trigger whenever the user asks to document an API, generate or update OpenAPI/Swagger, write ADRs, produce a runbook, or refresh docs after an API change. Runs as STAGE 9 (final) of the canonical backend orchestration flow and only after a GO review verdict with zero open P0/P1.
+---
+
 # Doc Generator Skills
 
 Focused techniques the **Okr-doc-generator** applies at stage 8 of the canonical 8-stage flow. Cross-cutting `documentation` skill in `Skills.md` covers source-traceability and audience separation; this file holds the per-deliverable techniques.

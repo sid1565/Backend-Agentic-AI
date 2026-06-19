@@ -1,3 +1,8 @@
+---
+description: Produce the test pyramid (unit, integration, e2e, and the auth-invariant matrix) using the Okr-test-engineer agent.
+argument-hint: <feature/module or test layer, e.g. "tests for announcements" or "add auth matrix to schools e2e">
+---
+
 # Test Engineer Commands
 
 Commands routed to the **Okr-test-engineer** agent (stage 6). The base `/test` command produces the full pyramid. Sub-commands run a single layer or a focused slice — useful when you've already shipped one layer, when you want to add the auth matrix to existing tests, or when you're hunting coverage gaps.

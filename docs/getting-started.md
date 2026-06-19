@@ -78,18 +78,24 @@ curl -X POST http://localhost:3000/v1/auth/admin/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@school-saas.local","password":"ChangeMe!2026"}'
 ```
-Response shape:
+Response shape — every endpoint returns the standard envelope
+`{ status, message, data }`:
 ```json
 {
-  "accessToken": "<jwt>",
-  "accessTokenExpiresIn": 900,
-  "refreshToken": "<opaque>",
-  "tokenType": "Bearer",
-  "user": { "id": "<uuid>", "role": "admin" }
+  "status": true,
+  "message": "Login successful",
+  "data": {
+    "accessToken": "<jwt>",
+    "accessTokenExpiresIn": 900,
+    "refreshToken": "<opaque>",
+    "tokenType": "Bearer",
+    "user": { "id": "<uuid>", "role": "admin" }
+  }
 }
 ```
-Use the access token as `Authorization: Bearer <jwt>` to call any
-`/v1/admin/*` endpoint.
+Use the access token (`data.accessToken`) as `Authorization: Bearer <jwt>` to
+call any `/v1/admin/*` endpoint. List endpoints add pagination meta
+(`limit`, `offset`, `total`) at the top level alongside `data`.
 
 ---
 
@@ -103,12 +109,40 @@ The seeder is skip-if-exists. To force a fresh seed, either:
 - or change `ROOT_ADMIN_EMAIL` to a new value and restart — a new admin is
   created with the new email.
 
+## API documentation
+- **Swagger UI** (dev only): with the app running, browse
+  `http://localhost:3000/docs` for interactive API docs.
+- **OpenAPI spec**: `docs/openapi.yaml` is **generated from the live routes** —
+  regenerate it after changing any controller or DTO:
+  ```bash
+  npm run openapi:gen   # boots the app in preview mode (no DB) and rewrites docs/openapi.yaml
+  ```
+  CI fails if the committed spec is out of date, so endpoint docs never drift.
+
+## Database migrations
+Dev and test auto-create the schema via TypeORM `synchronize`. **Production does
+NOT sync** — it applies versioned migrations on boot (`migrationsRun`). The CLI
+data source lives at `src/database/data-source.ts`; migrations live under
+`src/database/migrations/`.
+```bash
+npm run migration:run        # apply pending migrations (uses DB_* env vars)
+npm run migration:revert     # roll back the most recent migration
+npm run migration:show       # list applied vs pending
+# After changing any entity, generate a migration (diffs entities → DB):
+npm run migration:generate -- src/database/migrations/<DescriptiveName>
+```
+After generating, verify the round-trip (`run` → `revert` → `run`) and re-run
+`migration:generate` — it must report "No changes" (entities and migration agree).
+Commit the migration file with the entity change.
+
 ## Other useful commands
 ```bash
 npm run build         # production compile
 npm run start:prod    # run dist/ (requires non-default JWT_SECRET & ROOT_ADMIN_PASSWORD)
-npm test              # 40 unit tests (no DB needed)
-npm run test:e2e      # 14 e2e tests (needs a backend_agent_test DB)
+npm test              # 57 unit tests (no DB needed)
+npm run test:e2e      # 18 e2e tests (needs a backend_agent_test DB)
+npm run openapi:gen   # regenerate docs/openapi.yaml from the live routes
+npm run migration:run # apply DB migrations (production schema management)
 ```
 
 ## Troubleshooting

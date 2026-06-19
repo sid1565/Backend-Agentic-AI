@@ -59,6 +59,7 @@ export class AuthController {
     return ResponseHelper.success(result.message, result.data);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Request password reset email" })
@@ -68,7 +69,9 @@ export class AuthController {
   }
 
   // Unauthenticated by design: the caller proves identity with the emailed
-  // reset token, not a bearer JWT, so no UserAuthGuard is applied.
+  // reset token, not a bearer JWT, so no UserAuthGuard is applied. Throttled
+  // tightly to blunt brute-forcing of the reset token.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Reset password using reset token" })

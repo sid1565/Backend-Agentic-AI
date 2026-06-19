@@ -94,9 +94,12 @@ describe('School SaaS (e2e)', () => {
   describe('auth', () => {
     it('AC-E2E-1: admin login returns an access+refresh pair', async () => {
       const res = await login('admin/login', ADMIN).expect(200);
-      expect(res.body.accessToken).toEqual(expect.any(String));
-      expect(res.body.refreshToken).toEqual(expect.any(String));
-      expect(res.body.user).toEqual({ id: expect.any(String), role: 'admin' });
+      expect(res.body.data.accessToken).toEqual(expect.any(String));
+      expect(res.body.data.refreshToken).toEqual(expect.any(String));
+      expect(res.body.data.user).toEqual({
+        id: expect.any(String),
+        role: 'admin',
+      });
     });
 
     it('AC-E2E-2: admin login with wrong password is 401', async () => {
@@ -107,29 +110,29 @@ describe('School SaaS (e2e)', () => {
 
     it('AC-E2E-3: school login works with the seeded credentials', async () => {
       const res = await login('school/login', SCHOOL).expect(200);
-      expect(res.body.user.role).toBe('school');
-      expect(res.body.user.id).toBe(schoolId);
+      expect(res.body.data.user.role).toBe('school');
+      expect(res.body.data.user.id).toBe(schoolId);
     });
 
     it('AC-E2E-4: refresh rotates — old token is rejected after use', async () => {
       const { body } = await login('admin/login', ADMIN).expect(200);
       const first = await request(app.getHttpServer())
         .post(`${V}/auth/refresh`)
-        .send({ refreshToken: body.refreshToken })
+        .send({ refreshToken: body.data.refreshToken })
         .expect(200);
-      expect(first.body.accessToken).toEqual(expect.any(String));
+      expect(first.body.data.accessToken).toEqual(expect.any(String));
       // Reusing the now-rotated token must fail.
       await request(app.getHttpServer())
         .post(`${V}/auth/refresh`)
-        .send({ refreshToken: body.refreshToken })
+        .send({ refreshToken: body.data.refreshToken })
         .expect(401);
     });
 
-    it('AC-E2E-5: forgot-password always returns 202 (no enumeration)', async () => {
+    it('AC-E2E-5: forgot-password always returns 200 (no enumeration)', async () => {
       await login('forgot-password', { email: 'ghost@nowhere.test' }).expect(
-        202,
+        200,
       );
-      await login('forgot-password', { email: ADMIN.email }).expect(202);
+      await login('forgot-password', { email: ADMIN.email }).expect(200);
     });
   });
 
@@ -160,7 +163,7 @@ describe('School SaaS (e2e)', () => {
       const { body } = await login('school/login', SCHOOL);
       await request(app.getHttpServer())
         .post(`${V}/admin/schools`)
-        .set('Authorization', `Bearer ${body.accessToken}`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
         .send(newSchool)
         .expect(403);
     });
@@ -169,18 +172,18 @@ describe('School SaaS (e2e)', () => {
       const { body } = await login('admin/login', ADMIN);
       const res = await request(app.getHttpServer())
         .post(`${V}/admin/schools`)
-        .set('Authorization', `Bearer ${body.accessToken}`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
         .send(newSchool)
         .expect(201);
-      expect(res.body.email).toBe(newSchool.email);
-      expect(res.body.subscription.status).toBe('ACTIVE');
+      expect(res.body.data.email).toBe(newSchool.email);
+      expect(res.body.data.subscription.status).toBe('ACTIVE');
     });
 
     it('AC-E2E-9: ADMIN duplicate email → 409', async () => {
       const { body } = await login('admin/login', ADMIN);
       await request(app.getHttpServer())
         .post(`${V}/admin/schools`)
-        .set('Authorization', `Bearer ${body.accessToken}`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
         .send({ ...newSchool, transactionId: 'TXN-E2E-CREATE-2' })
         .expect(409);
     });
@@ -193,16 +196,16 @@ describe('School SaaS (e2e)', () => {
       const { body } = await login('school/login', SCHOOL);
       const res = await request(app.getHttpServer())
         .get(`${V}/me/school`)
-        .set('Authorization', `Bearer ${body.accessToken}`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
         .expect(200);
-      expect(res.body.id).toBe(schoolId);
+      expect(res.body.data.id).toBe(schoolId);
     });
 
     it('AC-E2E-11: ADMIN token → 403 (wrong role for /me)', async () => {
       const { body } = await login('admin/login', ADMIN);
       await request(app.getHttpServer())
         .get(`${V}/me/school`)
-        .set('Authorization', `Bearer ${body.accessToken}`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
         .expect(403);
     });
 
@@ -218,10 +221,13 @@ describe('School SaaS (e2e)', () => {
       const { body } = await login('admin/login', ADMIN);
       const res = await request(app.getHttpServer())
         .get(`${V}/admin/audit-logs`)
-        .set('Authorization', `Bearer ${body.accessToken}`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
         .expect(200);
       expect(res.body).toEqual(
-        expect.objectContaining({ items: expect.any(Array), total: expect.any(Number) }),
+        expect.objectContaining({
+          data: expect.any(Array),
+          total: expect.any(Number),
+        }),
       );
     });
 
@@ -229,8 +235,94 @@ describe('School SaaS (e2e)', () => {
       const { body } = await login('school/login', SCHOOL);
       await request(app.getHttpServer())
         .get(`${V}/admin/audit-logs`)
-        .set('Authorization', `Bearer ${body.accessToken}`)
+        .set('Authorization', `Bearer ${body.data.accessToken}`)
         .expect(403);
+    });
+  });
+
+  // ---- Announcements (S-01): admin writes, authenticated reads --------------
+
+  describe('Announcements module (S-01)', () => {
+    const adminToken = async () =>
+      (await login('admin/login', ADMIN)).body.data.accessToken as string;
+    const schoolToken = async () =>
+      (await login('school/login', SCHOOL)).body.data.accessToken as string;
+
+    it('AC-ANN-9: write/read without a token → 401', async () => {
+      await request(app.getHttpServer())
+        .post(`${V}/admin/announcements`)
+        .send({ title: 'x', body: 'y' })
+        .expect(401);
+      await request(app.getHttpServer()).get(`${V}/announcements`).expect(401);
+    });
+
+    it('AC-ANN-10: SCHOOL token cannot write → 403', async () => {
+      await request(app.getHttpServer())
+        .post(`${V}/admin/announcements`)
+        .set('Authorization', `Bearer ${await schoolToken()}`)
+        .send({ title: 'x', body: 'y' })
+        .expect(403);
+    });
+
+    it('AC-ANN-2: ADMIN create with empty title → 400 (validation)', async () => {
+      await request(app.getHttpServer())
+        .post(`${V}/admin/announcements`)
+        .set('Authorization', `Bearer ${await adminToken()}`)
+        .send({ title: '', body: 'y' })
+        .expect(400);
+    });
+
+    it('AC-ANN-11 + 12: admin CRUD + authenticated read lifecycle', async () => {
+      const aTok = await adminToken();
+
+      // ADMIN create → 201
+      const created = await request(app.getHttpServer())
+        .post(`${V}/admin/announcements`)
+        .set('Authorization', `Bearer ${aTok}`)
+        .send({ title: 'Exam week', body: 'Starts Monday' })
+        .expect(201);
+      const id = created.body.data.id as string;
+      expect(created.body.data.createdBy).toEqual(expect.any(String));
+
+      // SCHOOL (authenticated user) can read list + single → 200
+      const sTok = await schoolToken();
+      const list = await request(app.getHttpServer())
+        .get(`${V}/announcements`)
+        .set('Authorization', `Bearer ${sTok}`)
+        .expect(200);
+      expect(list.body.data.some((a: { id: string }) => a.id === id)).toBe(true);
+
+      await request(app.getHttpServer())
+        .get(`${V}/announcements/${id}`)
+        .set('Authorization', `Bearer ${sTok}`)
+        .expect(200);
+
+      // ADMIN update → 200
+      const updated = await request(app.getHttpServer())
+        .patch(`${V}/admin/announcements/${id}`)
+        .set('Authorization', `Bearer ${aTok}`)
+        .send({ title: 'Exam week (updated)' })
+        .expect(200);
+      expect(updated.body.data.title).toBe('Exam week (updated)');
+
+      // ADMIN soft-delete → 200, then it disappears from reads (404 / absent)
+      await request(app.getHttpServer())
+        .delete(`${V}/admin/announcements/${id}`)
+        .set('Authorization', `Bearer ${aTok}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get(`${V}/announcements/${id}`)
+        .set('Authorization', `Bearer ${sTok}`)
+        .expect(404);
+
+      const afterDelete = await request(app.getHttpServer())
+        .get(`${V}/announcements`)
+        .set('Authorization', `Bearer ${sTok}`)
+        .expect(200);
+      expect(
+        afterDelete.body.data.some((a: { id: string }) => a.id === id),
+      ).toBe(false);
     });
   });
 });

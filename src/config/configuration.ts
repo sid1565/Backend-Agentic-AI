@@ -1,3 +1,39 @@
+/**
+ * Known-insecure placeholder secrets that have shipped in `.env`, `.env.example`,
+ * or prior config defaults. A signing secret matching any of these is treated as
+ * absent — tokens signed with a publicly-known value are forgeable.
+ */
+const INSECURE_JWT_SECRETS = new Set([
+  "change-me",
+  "replace-with-strong-random-secret",
+]);
+
+/** Minimum JWT secret length. HS256 needs >= 256 bits of key material. */
+const MIN_JWT_SECRET_LENGTH = 32;
+
+/**
+ * Resolve the JWT signing secret, failing fast (in EVERY environment) if it is
+ * missing, too short, or a known placeholder. There is deliberately no default:
+ * booting with a guessable secret is a full authentication bypass, so the app
+ * must refuse to start rather than silently sign forgeable tokens.
+ */
+function requireJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (
+    !secret ||
+    secret.length < MIN_JWT_SECRET_LENGTH ||
+    INSECURE_JWT_SECRETS.has(secret)
+  ) {
+    throw new Error(
+      `JWT_SECRET must be set to a strong, non-default value of at least ` +
+        `${MIN_JWT_SECRET_LENGTH} characters. Refusing to start with a missing, ` +
+        `weak, or placeholder signing secret (generate one with ` +
+        `\`openssl rand -hex 32\`).`,
+    );
+  }
+  return secret;
+}
+
 export default () => ({
   env: process.env.NODE_ENV ?? "development",
   port: parseInt(process.env.PORT ?? "3000", 10),
@@ -9,7 +45,7 @@ export default () => ({
     database: process.env.DB_NAME ?? "school_saas",
   },
   auth: {
-    jwtSecret: process.env.JWT_SECRET ?? "change-me",
+    jwtSecret: requireJwtSecret(),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "15m",
     // Refresh tokens are opaque + DB-hashed (revocable), not signed JWTs, so
     // only a TTL is needed here — no separate signing secret.

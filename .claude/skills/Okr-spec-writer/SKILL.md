@@ -1,3 +1,8 @@
+---
+name: Okr-spec-writer
+description: Use this skill to translate a fuzzy backend requirement into a structured, traceable specification — entities, use cases, non-functional requirements, acceptance criteria, assumptions, and open questions. Trigger whenever the user wants a spec, requirements breakdown, acceptance criteria, or scoping of a feature before any implementation begins. Runs as STAGE 1 (first) of the canonical backend orchestration flow; its output is the single source of truth every downstream stage consumes.
+---
+
 # Spec Writer Skills
 
 Focused techniques the **Okr-spec-writer** applies at stage 1 of the canonical 8-stage flow. Cross-cutting skills (Okr-api-design, error-handling, etc.) live in `Skills.md`; this file holds the skills unique to translating fuzzy requests into structured specs.

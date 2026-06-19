@@ -37,6 +37,7 @@
     "AUDIT_LOG": "Audit log",
     "USER": "User",
     "ME_SCHOOL": "Your school",
-    "ME_SUBSCRIPTION": "Your subscription"
+    "ME_SUBSCRIPTION": "Your subscription",
+    "ANNOUNCEMENT": "Announcement"
   }
 }

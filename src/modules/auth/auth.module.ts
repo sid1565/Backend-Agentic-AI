@@ -21,7 +21,10 @@ import { PasswordResetToken } from './entities/password-reset-token.entity';
       inject: [ConfigService],
       useFactory: (cfg: ConfigService) => ({
         secret: cfg.get<string>('auth.jwtSecret'),
-        signOptions: { expiresIn: cfg.get<string>('auth.jwtExpiresIn') },
+        signOptions: {
+          expiresIn: cfg.get<string>('auth.jwtExpiresIn'),
+          algorithm: 'HS256' as const,
+        },
       }),
     }),
     TypeOrmModule.forFeature([

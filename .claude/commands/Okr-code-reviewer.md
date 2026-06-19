@@ -1,3 +1,8 @@
+---
+description: Review backend artifacts (schema, auth, API, services, tests) with a severity-tagged report and explicit GO/NO-GO verdict using the Okr-code-reviewer agent.
+argument-hint: <feature/module or domain to review, e.g. "review src/modules/announcements" or "security audit of auth">
+---
+
 # Code Reviewer Commands
 
 Commands routed to the **Okr-code-reviewer** agent (stage 7). The base `/review` command walks all seven domains. Sub-commands target a single domain — useful when you want a focused audit (security only, spec-compliance only) without re-walking everything, or when verifying a specific finding has been fixed.

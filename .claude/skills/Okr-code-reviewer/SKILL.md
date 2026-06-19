@@ -1,3 +1,8 @@
+---
+name: Okr-code-reviewer
+description: Use this skill to perform a structured, severity-tagged (P0–P3) review of backend artifacts — database schema, auth foundation, API contracts, service code, and tests — against the spec, NestJS conventions, and the OWASP API Top 10. Trigger whenever the user asks for a code review, security audit, PR review, spec-compliance check, or cross-layer consistency audit, or wants a GO/NO-GO verdict before shipping. Runs as STAGE 8 of the canonical backend orchestration flow, after Okr-test-engineer and before Okr-doc-generator.
+---
+
 # Code Reviewer Skills
 
 Focused techniques the **Okr-code-reviewer** applies at stage 7 of the canonical 8-stage flow. Cross-cutting `code-review` skill in `Skills.md` covers the severity model and routing; this file holds the concrete audit techniques per review domain.

@@ -1,3 +1,8 @@
+---
+name: Okr-test-engineer
+description: Use this skill to design and write tests for a NestJS backend — unit tests (Jest), integration tests (against a test DB), and e2e tests (supertest against the booted app) — with explicit auth-invariant matrices (positive + negative per role) and full acceptance-criteria coverage. Trigger whenever the user asks to write tests, add coverage, build a test suite, or test endpoints/services. Runs as STAGE 7 of the canonical backend orchestration flow, after Okr-service-layer and before Okr-code-reviewer.
+---
+
 # Test Engineer Skills
 
 Focused techniques the **Okr-test-engineer** applies at stage 6 of the canonical 8-stage flow. Cross-cutting `testing` skill in `Skills.md` covers the pyramid concept; this file holds the concrete techniques per test layer plus the project-defining auth-invariant pattern.

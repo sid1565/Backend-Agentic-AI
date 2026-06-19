@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
 import * as bcrypt from 'bcrypt';
-import { LessThan, Repository } from 'typeorm';
+import { IsNull, LessThan, Repository } from 'typeorm';
 import { AppRole } from '../../common/decorators/roles.decorator';
 import { User } from '../../common/decorators/current-user.decorator';
 import { I18nService } from 'nestjs-i18n';
@@ -94,11 +94,28 @@ export class AuthService {
     const tokenHash = this.hashToken(dto.refreshToken);
     const record = await this.refreshTokens.findOne({ where: { tokenHash } });
 
-    if (
-      !record ||
-      record.revokedAt !== null ||
-      record.expiresAt.getTime() <= Date.now()
-    ) {
+    if (!record) {
+      throw new UnauthorizedException(
+        AUTH_ERROR.INVALID_REFRESH_TOKEN(this.i18n),
+      );
+    }
+
+    // Reuse detection: an already-rotated/revoked token is being presented
+    // again — a strong signal it was stolen and replayed. Revoke EVERY active
+    // session for the subject (kill the family) and refuse. The external
+    // message stays generic so an attacker can't tell detection fired.
+    if (record.revokedAt !== null) {
+      await this.revokeAllSessions(record.subjectId, record.subjectType);
+      this.logger.warn(
+        `Refresh token reuse detected — revoked all sessions for ` +
+          `subjectType=${record.subjectType} subjectId=${record.subjectId}`,
+      );
+      throw new UnauthorizedException(
+        AUTH_ERROR.INVALID_REFRESH_TOKEN(this.i18n),
+      );
+    }
+
+    if (record.expiresAt.getTime() <= Date.now()) {
       throw new UnauthorizedException(
         AUTH_ERROR.INVALID_REFRESH_TOKEN(this.i18n),
       );
@@ -120,10 +137,7 @@ export class AuthService {
   async logout(user: User): Promise<Envelope<{ loggedOut: true }>> {
     const subjectType =
       user.role === 'ADMIN' ? SubjectType.ADMIN : SubjectType.SCHOOL;
-    await this.refreshTokens.update(
-      { subjectId: user.id, subjectType, revokedAt: null as unknown as Date },
-      { revokedAt: new Date() },
-    );
+    await this.revokeAllSessions(user.id, subjectType);
     return {
       message: AUTH_SUCCESS.LOGOUT(this.i18n),
       data: { loggedOut: true },
@@ -203,14 +217,7 @@ export class AuthService {
     await this.resetTokens.save(record);
 
     // Invalidate existing sessions after a password change.
-    await this.refreshTokens.update(
-      {
-        subjectId: record.subjectId,
-        subjectType: record.subjectType,
-        revokedAt: null as unknown as Date,
-      },
-      { revokedAt: new Date() },
-    );
+    await this.revokeAllSessions(record.subjectId, record.subjectType);
     return {
       message: AUTH_SUCCESS.PASSWORD_RESET_DONE(this.i18n),
       data: { reset: true },
@@ -255,11 +262,31 @@ export class AuthService {
   private async findSubjectByEmail(
     email: string,
   ): Promise<{ id: string; type: SubjectType } | null> {
-    const admin = await this.admins.findOne({ where: { email } });
+    // Always query both tables (no short-circuit) so a hit and a miss perform
+    // the same work — closes the account-enumeration timing oracle. Run them
+    // concurrently to keep latency low. Admin takes precedence on the rare
+    // both-match case.
+    const [admin, school] = await Promise.all([
+      this.admins.findOne({ where: { email } }),
+      this.schools.findOne({ where: { email } }),
+    ]);
     if (admin) return { id: admin.id, type: SubjectType.ADMIN };
-    const school = await this.schools.findOne({ where: { email } });
     if (school) return { id: school.id, type: SubjectType.SCHOOL };
     return null;
+  }
+
+  /**
+   * Revoke every active (non-revoked) refresh token for a subject. Used on
+   * logout, after a password change, and on refresh-token reuse detection.
+   */
+  private async revokeAllSessions(
+    subjectId: string,
+    subjectType: SubjectType,
+  ): Promise<void> {
+    await this.refreshTokens.update(
+      { subjectId, subjectType, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
   }
 
   private hashToken(raw: string): string {

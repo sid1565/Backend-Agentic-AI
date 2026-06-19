@@ -19,6 +19,8 @@ import { MailModule } from "./modules/mail/mail.module";
 import { AuditModule } from "./modules/admin/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { MeModule } from "./modules/me/me.module";
+import { Announcement } from "./modules/announcements/entities/announcement.entity";
+import { AnnouncementsModule } from "./modules/announcements/announcements.module";
 
 @Module({
   imports: [
@@ -51,8 +53,16 @@ import { MeModule } from "./modules/me/me.module";
           AdminUser,
           RefreshToken,
           PasswordResetToken,
+          Announcement,
         ],
+        migrations: [join(__dirname, "database", "migrations", "*{.js,.ts}")],
+        // Source-of-truth split: dev/test auto-sync the schema for fast
+        // iteration; production NEVER syncs — it applies versioned migrations
+        // on boot instead (see src/database/data-source.ts + `npm run
+        // migration:*`). This closes the prior gap where production had
+        // synchronize=false AND no migrations, i.e. no schema management at all.
         synchronize: cfg.get<string>("env") !== "production",
+        migrationsRun: cfg.get<string>("env") === "production",
         logging: false,
       }),
     }),
@@ -62,6 +72,7 @@ import { MeModule } from "./modules/me/me.module";
     SchoolsModule,
     SubscriptionsModule,
     MeModule,
+    AnnouncementsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

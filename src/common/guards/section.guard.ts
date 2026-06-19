@@ -19,6 +19,7 @@ const ROLE_SECTIONS: Record<AppRole, Set<SectionValue>> = {
     EAdminModule.SCHOOL_MANAGEMENT,
     EAdminModule.SUBSCRIPTION_MANAGEMENT,
     EAdminModule.AUDIT_LOGS,
+    EAdminModule.ANNOUNCEMENT_MANAGEMENT,
   ]),
   SCHOOL: new Set<SectionValue>([
     EUserModule.PROFILE,

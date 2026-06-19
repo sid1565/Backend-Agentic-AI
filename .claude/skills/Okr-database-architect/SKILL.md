@@ -79,6 +79,20 @@ For each table:
 - Initial migration outline
 - Rules for future schema changes (expand-contract, backfills, reversibility)
 
+> **This repo's convention (TypeORM migrations — mandatory for any schema change):**
+> The project ships a CLI data source at `src/database/data-source.ts` and versioned
+> migrations under `src/database/migrations/`. `synchronize` is on ONLY in dev/test for fast
+> iteration; **production never syncs — it runs migrations on boot** (`migrationsRun`). So any
+> new or changed entity MUST ship a generated, verified migration:
+> 1. After writing/editing entities, run `npm run migration:generate -- src/database/migrations/<Name>`
+>    against a database whose schema reflects the *previous* state (TypeORM diffs entities → DB and
+>    emits the exact SQL — never hand-write it).
+> 2. Verify the round-trip on a throwaway DB: `migration:run` → `migration:revert` → `migration:run`.
+> 3. **Drift gate:** re-run `migration:generate` afterward — it must report *"No changes in database
+>    schema were found"*. A non-empty diff means the migration and entities disagree; fix before handoff.
+> 4. Commit the migration file alongside the entity. A schema change without a matching migration is
+>    an incomplete deliverable (it would work in dev via `synchronize` but silently fail in production).
+
 ## Handoff Notes for Downstream Stages
 - **For Okr-backend-auth-security (stage 3)**: list of auth-relevant tables (users, roles, sessions, audit log) and where future auth-related additions can live; password hash column, role link, session/refresh-token storage strategy.
 - **For Okr-api-designer (stage 4)**: canonical entity field types and relationships that DTOs must match; soft-delete and timestamp conventions; pagination key candidates.
