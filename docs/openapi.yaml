@@ -1,0 +1,278 @@
+openapi: 3.1.0
+info:
+  title: School SaaS — Manual Subscription System API
+  version: 0.1.0
+  description: >
+    Admin-driven school onboarding with subscription management and credential
+    email delivery. Authorization is role-based (RBAC): `ADMIN` and `SCHOOL`.
+    `x-required-role` on each operation states the role enforced by RolesGuard;
+    operations without it are unauthenticated.
+servers:
+  - url: http://localhost:3000
+    description: Local (URI versioning — all paths are prefixed with /v1)
+tags:
+  - name: auth
+  - name: admin/schools
+  - name: admin/audit
+  - name: me
+
+paths:
+  /v1/auth/admin/login:
+    post:
+      tags: [auth]
+      summary: Admin login (rate-limited 10/min)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginDto' }
+      responses:
+        '200': { description: Token pair, content: { application/json: { schema: { $ref: '#/components/schemas/TokenPair' } } } }
+        '401': { description: Invalid credentials }
+        '429': { description: Too many attempts }
+
+  /v1/auth/school/login:
+    post:
+      tags: [auth]
+      summary: School login (rate-limited 10/min)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginDto' }
+      responses:
+        '200': { description: Token pair, content: { application/json: { schema: { $ref: '#/components/schemas/TokenPair' } } } }
+        '401': { description: Invalid credentials }
+        '429': { description: Too many attempts }
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Exchange a refresh token for a new pair (rotates the old token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshDto' }
+      responses:
+        '200': { description: New token pair, content: { application/json: { schema: { $ref: '#/components/schemas/TokenPair' } } } }
+        '400': { description: refreshToken missing }
+        '401': { description: Invalid/expired/rotated token }
+
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke the caller's refresh tokens
+      security: [{ bearerAuth: [] }]
+      responses:
+        '204': { description: Logged out }
+        '401': { description: Missing/invalid JWT }
+
+  /v1/auth/forgot-password:
+    post:
+      tags: [auth]
+      summary: Request a password-reset email (always 202, no enumeration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ForgotPasswordDto' }
+      responses:
+        '202': { description: Accepted (regardless of whether the email exists) }
+
+  /v1/auth/reset-password:
+    post:
+      tags: [auth]
+      summary: Reset password using an emailed token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetPasswordDto' }
+      responses:
+        '204': { description: Password updated; sessions revoked }
+        '400': { description: Invalid/expired/used token }
+
+  /v1/admin/schools:
+    post:
+      tags: [admin/schools]
+      summary: Create a school + initial subscription (transactional)
+      x-required-role: ADMIN
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSchoolDto' }
+      responses:
+        '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/SchoolResponse' } } } }
+        '400': { description: Validation failure / endDate <= startDate }
+        '401': { description: Missing/invalid JWT }
+        '403': { description: Authenticated but not ADMIN }
+        '409': { description: Duplicate email or transactionId }
+    get:
+      tags: [admin/schools]
+      summary: List schools (paginated, searchable)
+      x-required-role: ADMIN
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: search, in: query, schema: { type: string, default: '' } }
+        - { name: order, in: query, description: 'JSON object mapping column -> ASC|DESC. Sortable columns: createdAt, name, email. Example: {"name":"ASC"}', schema: { type: string, default: '{"createdAt":"DESC"}' } }
+        - { name: subscriptionStatus, in: query, schema: { type: string, enum: [ACTIVE, EXPIRED] } }
+      responses:
+        '200': { description: Paginated schools }
+        '401': { description: Missing/invalid JWT }
+        '403': { description: Not ADMIN }
+
+  /v1/admin/schools/{id}:
+    get:
+      tags: [admin/schools]
+      summary: Get one school
+      x-required-role: ADMIN
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: School, content: { application/json: { schema: { $ref: '#/components/schemas/SchoolResponse' } } } }
+        '404': { description: Not found }
+
+  /v1/admin/schools/{id}/resend-credentials:
+    post:
+      tags: [admin/schools]
+      summary: Regenerate the school password and email it
+      x-required-role: ADMIN
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: '{ success: true }' }
+        '404': { description: Not found }
+
+  /v1/admin/schools/{id}/subscriptions:
+    get:
+      tags: [admin/schools]
+      summary: List a school's subscriptions
+      x-required-role: ADMIN
+      security: [{ bearerAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Subscription array }
+        '404': { description: Not found }
+
+  /v1/admin/audit-logs:
+    get:
+      tags: [admin/audit]
+      summary: List admin audit logs (paginated, filterable)
+      x-required-role: ADMIN
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: search, in: query, schema: { type: string, default: '' } }
+        - { name: order, in: query, description: 'JSON object mapping column -> ASC|DESC. Sortable columns: createdAt, action. Example: {"createdAt":"DESC"}', schema: { type: string, default: '{"createdAt":"DESC"}' } }
+        - { name: actorId, in: query, schema: { type: string, format: uuid } }
+        - { name: action, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200': { description: Paginated audit logs }
+        '403': { description: Not ADMIN }
+
+  /v1/me/school:
+    get:
+      tags: [me]
+      summary: Authenticated school reads its own record
+      x-required-role: SCHOOL
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: School, content: { application/json: { schema: { $ref: '#/components/schemas/SchoolResponse' } } } }
+        '401': { description: Missing/invalid JWT }
+        '403': { description: Not SCHOOL }
+        '404': { description: School not found }
+
+  /v1/me/subscription:
+    get:
+      tags: [me]
+      summary: Authenticated school reads its latest subscription
+      x-required-role: SCHOOL
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Subscription }
+        '403': { description: Not SCHOOL }
+        '404': { description: No subscription on file }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginDto:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 255 }
+        password: { type: string, minLength: 8, maxLength: 128 }
+    RefreshDto:
+      type: object
+      properties:
+        refreshToken: { type: string, maxLength: 512 }
+    ForgotPasswordDto:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    ResetPasswordDto:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token: { type: string, minLength: 20, maxLength: 512 }
+        newPassword: { type: string, minLength: 12, maxLength: 128 }
+    TokenPair:
+      type: object
+      properties:
+        accessToken: { type: string }
+        accessTokenExpiresIn: { type: integer, description: seconds }
+        refreshToken: { type: string }
+        tokenType: { type: string, enum: [Bearer] }
+        user:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            role: { type: string, enum: [admin, school] }
+    CreateSchoolDto:
+      type: object
+      required: [schoolName, email, phoneCode, phoneNumber, studentSeat, subscriptionAmount, currency, transactionId, subscriptionStartDate, subscriptionEndDate]
+      properties:
+        schoolName: { type: string, minLength: 2, maxLength: 200 }
+        email: { type: string, format: email }
+        phoneCode: { type: string, pattern: '^\+\d{1,4}$' }
+        phoneNumber: { type: string, pattern: '^\d{6,15}$' }
+        studentSeat: { type: integer, minimum: 1 }
+        subscriptionAmount: { type: number, multipleOf: 0.01, minimum: 0 }
+        currency: { type: string, enum: [KWD, USD] }
+        transactionId: { type: string, minLength: 3, maxLength: 100 }
+        subscriptionStartDate: { type: string, format: date }
+        subscriptionEndDate: { type: string, format: date }
+    SubscriptionResponse:
+      type: object
+      properties:
+        id: { type: string }
+        amount: { type: string }
+        currency: { type: string }
+        transactionId: { type: string }
+        startDate: { type: string }
+        endDate: { type: string }
+        status: { type: string, enum: [ACTIVE, EXPIRED] }
+    SchoolResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        phoneCode: { type: string }
+        phoneNumber: { type: string }
+        studentSeat: { type: integer }
+        createdAt: { type: string, format: date-time }
+        subscription: { $ref: '#/components/schemas/SubscriptionResponse' }

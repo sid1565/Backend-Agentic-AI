@@ -1,0 +1,13 @@
+export enum EAdminModule {
+  USER_MANAGEMENT = 'USER_MANAGEMENT',
+  SCHOOL_MANAGEMENT = 'SCHOOL_MANAGEMENT',
+  SUBSCRIPTION_MANAGEMENT = 'SUBSCRIPTION_MANAGEMENT',
+  AUDIT_LOGS = 'AUDIT_LOGS',
+}
+
+export enum EUserModule {
+  PROFILE = 'PROFILE',
+  NOTIFICATIONS = 'NOTIFICATIONS',
+}
+
+export type Section = EAdminModule | EUserModule;

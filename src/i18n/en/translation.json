@@ -1,0 +1,42 @@
+{
+  "SUCCESS": {
+    "DEFAULT": "Operation successful",
+    "RECORD_FETCHED": "{record} fetched successfully",
+    "RECORD_LIST_FETCHED": "{record} list fetched successfully",
+    "RECORD_CREATED": "{record} created successfully",
+    "RECORD_UPDATED": "{record} updated successfully",
+    "RECORD_DELETED": "{record} deleted successfully",
+    "RECORD_SAVED": "{record} saved successfully",
+    "CREDENTIALS_RESENT": "Credentials resent successfully"
+  },
+  "ERROR": {
+    "DEFAULT": "Something went wrong",
+    "RECORD_NOT_FOUND": "{record} not found",
+    "RECORD_ALREADY_EXISTS": "{record} already exists",
+    "VALIDATION_FAILED": "Validation failed",
+    "FORBIDDEN": "You do not have permission to perform this action",
+    "SUBSCRIPTION_END_BEFORE_START": "Subscription end date must be after the start date",
+    "SCHOOL_ACCOUNTS_ONLY": "This endpoint is for school accounts only"
+  },
+  "AUTH_SUCCESS": {
+    "LOGIN": "Logged in successfully",
+    "LOGOUT": "Logged out successfully",
+    "REFRESHED": "Token refreshed successfully",
+    "PASSWORD_RESET_REQUESTED": "If the email exists, a reset link has been sent",
+    "PASSWORD_RESET_DONE": "Password reset successfully"
+  },
+  "AUTH_ERROR": {
+    "INVALID_CREDENTIALS": "Invalid credentials",
+    "INVALID_REFRESH_TOKEN": "Invalid or expired refresh token",
+    "INVALID_RESET_TOKEN": "Invalid or expired reset token",
+    "REFRESH_TOKEN_REQUIRED": "refreshToken is required"
+  },
+  "ENTITY": {
+    "SCHOOL": "School",
+    "SUBSCRIPTION": "Subscription",
+    "AUDIT_LOG": "Audit log",
+    "USER": "User",
+    "ME_SCHOOL": "Your school",
+    "ME_SUBSCRIPTION": "Your subscription"
+  }
+}

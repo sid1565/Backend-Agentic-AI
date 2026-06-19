@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #111827;">Welcome to School SaaS, {{schoolName}}!</h2>
+    <p>Your school account has been created. Use the credentials below to sign in.</p>
+
+    <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
+      <p style="margin: 4px 0;"><strong>Login Email:</strong> {{loginEmail}}</p>
+      <p style="margin: 4px 0;"><strong>Temporary Password:</strong> <code>{{password}}</code></p>
+    </div>
+
+    <h3 style="color: #111827;">Subscription Details</h3>
+    <ul>
+      <li>Amount: {{amount}} {{currency}}</li>
+      <li>Transaction ID: {{transactionId}}</li>
+      <li>Start Date: {{startDate}}</li>
+      <li>End Date: {{endDate}}</li>
+    </ul>
+
+    <p>
+      <a href="{{loginUrl}}"
+         style="display: inline-block; background: #2563eb; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none;">
+        Sign in
+      </a>
+    </p>
+
+    <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">
+      For security, please change your password after first login. If you did not expect this email, contact support.
+    </p>
+  </body>
+</html>

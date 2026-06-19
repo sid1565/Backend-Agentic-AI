@@ -1,0 +1,42 @@
+{
+  "SUCCESS": {
+    "DEFAULT": "تمت العملية بنجاح",
+    "RECORD_FETCHED": "تم جلب {record} بنجاح",
+    "RECORD_LIST_FETCHED": "تم جلب قائمة {record} بنجاح",
+    "RECORD_CREATED": "تم إنشاء {record} بنجاح",
+    "RECORD_UPDATED": "تم تحديث {record} بنجاح",
+    "RECORD_DELETED": "تم حذف {record} بنجاح",
+    "RECORD_SAVED": "تم حفظ {record} بنجاح",
+    "CREDENTIALS_RESENT": "تمت إعادة إرسال بيانات الاعتماد بنجاح"
+  },
+  "ERROR": {
+    "DEFAULT": "حدث خطأ ما",
+    "RECORD_NOT_FOUND": "{record} غير موجود",
+    "RECORD_ALREADY_EXISTS": "{record} موجود بالفعل",
+    "VALIDATION_FAILED": "فشل التحقق من الصحة",
+    "FORBIDDEN": "ليس لديك إذن لتنفيذ هذا الإجراء",
+    "SUBSCRIPTION_END_BEFORE_START": "يجب أن يكون تاريخ انتهاء الاشتراك بعد تاريخ البدء",
+    "SCHOOL_ACCOUNTS_ONLY": "هذه النقطة النهائية مخصصة لحسابات المدارس فقط"
+  },
+  "AUTH_SUCCESS": {
+    "LOGIN": "تم تسجيل الدخول بنجاح",
+    "LOGOUT": "تم تسجيل الخروج بنجاح",
+    "REFRESHED": "تم تحديث الرمز بنجاح",
+    "PASSWORD_RESET_REQUESTED": "إذا كان البريد الإلكتروني موجودًا، فقد تم إرسال رابط إعادة التعيين",
+    "PASSWORD_RESET_DONE": "تمت إعادة تعيين كلمة المرور بنجاح"
+  },
+  "AUTH_ERROR": {
+    "INVALID_CREDENTIALS": "بيانات اعتماد غير صالحة",
+    "INVALID_REFRESH_TOKEN": "رمز التحديث غير صالح أو منتهي الصلاحية",
+    "INVALID_RESET_TOKEN": "رمز إعادة التعيين غير صالح أو منتهي الصلاحية",
+    "REFRESH_TOKEN_REQUIRED": "رمز التحديث مطلوب"
+  },
+  "ENTITY": {
+    "SCHOOL": "مدرسة",
+    "SUBSCRIPTION": "اشتراك",
+    "AUDIT_LOG": "سجل التدقيق",
+    "USER": "مستخدم",
+    "ME_SCHOOL": "مدرستك",
+    "ME_SUBSCRIPTION": "اشتراكك"
+  }
+}
